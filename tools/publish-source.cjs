@@ -22,7 +22,7 @@ async function readInput(){process.stderr.write('Ready for source JSON on stdin 
  console.log('Synchronising with the returned repository using standard TLS…');
  const child=spawn(shell,['-NoProfile','-File',path.resolve('tools/sync-source.ps1')],{windowsHide:true,stdio:['pipe','pipe','pipe']});
  let stdout='',stderr='';child.stdout.on('data',x=>stdout+=x);child.stderr.on('data',x=>stderr+=x);
- child.stdin.end(JSON.stringify({credential,project_id:project,commit_sha:sha,pack_path:packPath}));
+ child.stdin.end(JSON.stringify({credential,project_id:project,commit_sha:sha,pack_path_b64:Buffer.from(packPath,'utf8').toString('base64')}));
  child.on('error',()=>{console.error('Could not start secure source transport.');process.exitCode=1;});
  child.on('close',code=>{const redact=s=>s.split(credential.token).join('[redacted]');if(code!==0){console.error(redact(stderr));process.exitCode=1;}else{process.stdout.write(redact(stdout));}});
 })().catch(e=>{console.error(e.message);process.exitCode=1;});
