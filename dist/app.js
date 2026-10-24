@@ -43,7 +43,7 @@
   }
   return `<svg viewBox="0 0 160 160" aria-hidden="true"><ellipse cx="81" cy="149" rx="49" ry="5" fill="#89977a" opacity=".13"/>${art}</svg>`;
  }
- function metricValue(p,m){if(m==='upf')return p.nova===null?'?':`N${p.nova}`;return `${number(p[m],m==='kcal'?0:1)}${m==='kcal'?'':'g'}`;}
+ function metricValue(p,m){if(m==='upf')return p.nova===null?'?':`N${p.nova}`;return `${number(p[m],m==='kcal'?0:2)}${m==='kcal'?'':'g'}`;}
  function levelLabel(p,m){const c=C.classify(p,m);if(c==='unknown')return t('pending');if(m==='upf')return p.nova===1?t('nova1'):p.nova===4?t('nova4'):t('nova23');return t(c==='green'?'lowLabel':c==='amber'?'mediumLabel':'highLabel');}
  function lights(p){const cfg=state.current.config;let metrics=cfg.labels?['kcal','fat','sugar','salt']:[];if(cfg.upf)metrics.push('upf');if(!metrics.length)return '';
   return `<div class="nutrition-row ${metrics.length===4?'four':metrics.length===1?'one':''}">${metrics.map(m=>{const c=C.classify(p,m);return `<div class="metric ${c}" title="${esc(t(m)+': '+levelLabel(p,m)+(m==='upf'?'':' · '+t('per100')+p.unit))}" aria-label="${esc(t(m)+': '+metricValue(p,m)+' · '+levelLabel(p,m))}"><span class="metric-name">${esc(t(m))}</span><span class="metric-bottom"><i class="light-dot ${c}"></i><span class="metric-value">${metricValue(p,m)}</span></span></div>`;}).join('')}</div><div class="nutrient-basis">${cfg.labels?esc(t('per100')+p.unit+' · kcal / g'):esc(t('processing'))}</div>`;
