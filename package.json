@@ -1,0 +1,7 @@
+{
+  "name": "almab-campus-shelf",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Buildless virtual shopping prototype with five experimental traffic lights",
+  "scripts": { "test": "node --test tests/core.test.cjs", "check": "node --check dist/app.js && node --check dist/core.js" }
+}

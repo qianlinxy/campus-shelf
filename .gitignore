@@ -1,0 +1,3 @@
+.publication/
+node_modules/
+*.log
