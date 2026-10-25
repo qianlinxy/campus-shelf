@@ -3,12 +3,12 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 root = Path(__file__).resolve().parents[1]
-target = root.parent / 'Campus_Shelf_v09_Convenience_Store.zip'
+target = root.parent / 'Campus_Shelf_v010_Combined_Cold_Cabinet.zip'
 files = []
 for folder in ('dist', 'supabase', 'cloudbase', 'tests', '.github'):
     files.extend(p for p in (root / folder).rglob('*') if p.is_file())
 for name in ('package.json', 'package-lock.json', '.gitignore', '.env.example',
-             'README.md', 'CONVENIENCE_STORE_V09.md', 'CAMPUS_ADAPTATION_V08.md', 'QA_V08.md', 'qa-v08-fixtures.png', 'CLOUDBASE_GITHUB_GUIDE.md', 'UPLOAD_WEBSITE_ZH.md', 'QA_V07.md', 'DEPLOY_GITHUB.md', 'SUPABASE_START_HERE.md', 'QA_V06.md', 'qa-v06-admin.png', 'qa-v06-admin-overview.png', 'CATALOG.md', 'QA.md', 'QA_V2.md', 'QA_V021.md', 'QA_V03.md', 'QA_V04.md', 'QA_V041.md', 'QA_V042.md', 'QA_V05.md', 'SHELF_DESIGN_V05.md', 'qa-v05-camera.png', 'qa-v042-close-labels.png', 'qa-v041-languages.png', 'SHELF_DESIGN_V03.md', 'SHELF_DESIGN_V04.md', 'qa-v04-shelf.png', 'qa-v03-shelf.png', 'qa-v2-preview.png', 'qa-v021-measurements.png'):
+             'README.md', 'COMBINED_COLD_CABINET_V010.md', 'CONVENIENCE_STORE_V09.md', 'CAMPUS_ADAPTATION_V08.md', 'QA_V08.md', 'qa-v08-fixtures.png', 'CLOUDBASE_GITHUB_GUIDE.md', 'UPLOAD_WEBSITE_ZH.md', 'QA_V07.md', 'DEPLOY_GITHUB.md', 'SUPABASE_START_HERE.md', 'QA_V06.md', 'qa-v06-admin.png', 'qa-v06-admin-overview.png', 'CATALOG.md', 'QA.md', 'QA_V2.md', 'QA_V021.md', 'QA_V03.md', 'QA_V04.md', 'QA_V041.md', 'QA_V042.md', 'QA_V05.md', 'SHELF_DESIGN_V05.md', 'qa-v05-camera.png', 'qa-v042-close-labels.png', 'qa-v041-languages.png', 'SHELF_DESIGN_V03.md', 'SHELF_DESIGN_V04.md', 'qa-v04-shelf.png', 'qa-v03-shelf.png', 'qa-v2-preview.png', 'qa-v021-measurements.png'):
     files.append(root / name)
 for name in ('build-cloudbase.cjs', 'adapt-campus-catalog.cjs', 'expand-convenience-catalog.cjs', 'package-static.py', 'stamp-assets.cjs', 'check.cjs', 'build-standalone.cjs', 'prepare-github-pages.cjs', 'seed-catalog.cjs', 'package-github.py'):
     files.append(root / 'tools' / name)

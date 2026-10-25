@@ -1,3 +1,5 @@
+> v0.10：冷藏冷冻一体柜，新布局v5、新测试研究 `almab-factorial-test-v4`。已有v0.9的Supabase仅运行009，CloudBase仅运行04；登记仍关闭。见 [最新说明](COMBINED_COLD_CABINET_V010.md)。
+
 > v0.9：当前目录75种、新测试研究 `almab-factorial-test-v3`。已完成007的Supabase仅运行008；CloudBase已完成v0.8仅运行03升级；v0.7先02再03；空环境才使用01。登记仍关闭。详见 [v0.9说明](CONVENIENCE_STORE_V09.md)。以下旧版本步骤不得跳过新版增量升级。
 
 # GitHub Pages + 腾讯云 CloudBase（v0.8）

@@ -1,3 +1,7 @@
+# Campus Shelf v0.10 · Combined cold cabinet
+
+冷藏冷冻合并为一个柜体：上三层16种冷藏商品，底层3种冷冻食品。仍为75种食品。最新说明见 [COMBINED_COLD_CABINET_V010.md](COMBINED_COLD_CABINET_V010.md)。以下历史版本说明保留。
+
 # Campus Shelf v0.9 · Convenience-store revision
 
 当前版本：75种选择，新增28种，移除完整午餐；食品货架39种、冷藏16种、小吃17种、冷冻3种。详情与数据库升级步骤见 [CONVENIENCE_STORE_V09.md](CONVENIENCE_STORE_V09.md)。以下较早说明保留作历史记录。

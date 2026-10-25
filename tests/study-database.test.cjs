@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {PGlite}=require('@electric-sql/pglite');
 require('../dist/data.js');const Core=require('../dist/core.js');
 for(const provider of ['supabase','cloudbase'])test(provider+' factorial study: real PostgreSQL allocation, drafts, completion, permissions and export',async t=>{
- const db=new PGlite();const study='almab-factorial-test-v3';let seq=100;
+ const db=new PGlite();const study='almab-factorial-test-v4';let seq=100;
  const uuid=()=>`00000000-0000-4000-8000-${String(seq++).padStart(12,'0')}`;
  const owner=()=>db.exec('reset role');
  const login=async(id,role='authenticated')=>{await owner();await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:id,role,is_anonymous:role==='anon'})]);await db.exec('set role '+role);};

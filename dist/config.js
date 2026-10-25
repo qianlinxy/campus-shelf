@@ -7,7 +7,7 @@ globalThis.CAMPUS_CONFIG = {
   supabaseUrl: '',
   supabasePublishableKey: '',
   enrollmentEnabled: false,
-  studyId: 'almab-factorial-test-v3',
+  studyId: 'almab-factorial-test-v4',
   phoneAuthEnabled: false,
   publicSiteUrl: 'https://qianlinxy.github.io/campus-shelf/',
   consentVersion: '',

@@ -31,7 +31,7 @@ jobs:
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://qianlinxy.github.io/campus-shelf/' }}
           ENROLLMENT_ENABLED: ${{ vars.ENROLLMENT_ENABLED }}
-          STUDY_ID: ${{ vars.STUDY_ID || 'almab-factorial-test-v3' }}
+          STUDY_ID: ${{ vars.STUDY_ID || 'almab-factorial-test-v4' }}
           PHONE_AUTH_ENABLED: ${{ vars.PHONE_AUTH_ENABLED }}
           CONSENT_VERSION: ${{ vars.CONSENT_VERSION }}
           INFORMATION_URL_ZH: ${{ vars.INFORMATION_URL_ZH }}

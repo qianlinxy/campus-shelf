@@ -2,7 +2,7 @@
   'use strict';
   const RULES_VERSION='prototype-traffic-lights-v1';
   const METRICS=['kcal','fat','sugar','salt','upf'];
-  const LAYOUT_VERSION='physical-rack-v4',LAYOUTS=['alternatives-eye','targets-eye','category','popularity'];
+  const LAYOUT_VERSION='physical-rack-v5',LAYOUTS=['alternatives-eye','targets-eye','category','popularity'];
   const rackConfig=c=>c?.schemaVersion===2;
   function validateConfig(c){
     if(rackConfig(c))return Number.isInteger(c.budget)&&c.budget>=100&&c.budget<=5000&&[20,25,30].includes(c.markupPercent)&&LAYOUTS.includes(c.layoutMode)&&['upf','upf-or-high'].includes(c.placementRule)&&['price','position','labels','upf'].every(k=>typeof c[k]==='boolean')&&c.position===(c.layoutMode==='alternatives-eye');
@@ -46,15 +46,37 @@
     }
     return {version:'physical-rack-v2',mode,placementRule:rule,columns:cols,facingsPerSku:2,tiers:grid.map((row,tier)=>({tier,slots:row.map((p,column)=>({id:p?.id??null,tier,column,facings:p?2:0}))}))};
   }
+  function coldCabinetPlanogram(products,c){
+    const mode=rackConfig(c)?c.layoutMode:(c.position?'alternatives-eye':'category'),rule=rackConfig(c)?c.placementRule:'upf-or-high';
+    const canonical=[...products].sort((a,b)=>(a.catalogOrder??products.indexOf(a))-(b.catalogOrder??products.indexOf(b)));
+    const chilled=canonical.filter(p=>p.displayZone==='fridge'),frozen=canonical.filter(p=>p.displayZone==='freezer');
+    const cols=Math.max(4,Math.ceil(chilled.length/3),frozen.length),grid=Array.from({length:4},()=>Array(cols).fill(null));
+    const put=(list,tiers)=>{let i=0;for(const tier of tiers){const free=grid[tier].flatMap((p,col)=>p?[]:[col]),n=Math.min(free.length,list.length-i),start=Math.floor((free.length-n)/2);for(const col of free.slice(start,start+n))grid[tier][col]=list[i++];}if(i!==list.length)throw new Error('Cold compartment capacity exceeded');};
+    if(['alternatives-eye','targets-eye'].includes(mode)){
+      const targets=chilled.filter(p=>targetProduct(p,rule)),alternatives=chilled.filter(p=>!targetProduct(p,rule)&&p.eligible),neutral=chilled.filter(p=>!targets.includes(p)&&!alternatives.includes(p));
+      // Only the three chilled levels participate in placement changes. Overflow
+      // shares the upper tier; the freezer is fixed in every experimental arm.
+      if(mode==='alternatives-eye'){put(alternatives,[1,0,2]);put(targets,[2,0,1]);}
+      else{put(targets,[1,0,2]);put(alternatives,[2,0,1]);}
+      put(neutral,[0,1,2]);
+    }else{
+      const categoryOrder=['drinks','snacks','fresh','meals'];
+      const list=[...chilled].sort(mode==='popularity'?(a,b)=>(a.popularityRank??999)-(b.popularityRank??999):(a,b)=>categoryOrder.indexOf(a.category)-categoryOrder.indexOf(b.category));
+      const order=mode==='popularity'?[1,2,0]:[0,1,2],batch=Math.ceil(list.length/3);order.forEach((tier,i)=>put(list.slice(i*batch,(i+1)*batch),[tier]));
+    }
+    put(frozen,[3]);
+    return {version:LAYOUT_VERSION,mode,placementRule:rule,columns:cols,facingsPerSku:2,tiers:grid.map((row,tier)=>({tier,compartment:tier===3?'frozen':'chilled',slots:row.map((p,column)=>({id:p?.id??null,tier,column,facings:p?2:0,storageZone:tier===3?'freezer':'fridge',compartment:tier===3?'frozen':'chilled'}))}))};
+  }
   function planogram(products,c){
     if(!products.every(p=>['shelf','fridge','counter','freezer'].includes(p.displayZone)))return fixturePlanogram(products,c);
     let offsetPx=0,columnOffset=0;
-    const areas=['shelf','fridge','counter','freezer'].filter(zone=>products.some(p=>p.displayZone===zone)).map(zone=>{
-      const list=products.filter(p=>p.displayZone===zone),p=fixturePlanogram(list,c,zone==='shelf'?8:4),widthPx=p.columns*116+56;
+    const combined=products.some(p=>p.displayZone==='freezer');
+    const areas=(combined?['shelf','cold-cabinet','counter']:['shelf','fridge','counter']).filter(zone=>products.some(p=>zone==='cold-cabinet'?['fridge','freezer'].includes(p.displayZone):p.displayZone===zone)).map(zone=>{
+      const list=products.filter(p=>zone==='cold-cabinet'?['fridge','freezer'].includes(p.displayZone):p.displayZone===zone),p=zone==='cold-cabinet'?coldCabinetPlanogram(list,c):fixturePlanogram(list,c,zone==='shelf'?8:4),widthPx=p.columns*116+56;
       const area={...p,zone,offsetPx,widthPx,columnOffset,tiers:p.tiers.map(row=>({...row,slots:row.slots.map(slot=>({...slot,zone,column:slot.column+columnOffset,localColumn:slot.column}))}))};
       offsetPx+=widthPx+28;columnOffset+=p.columns;return area;
     });
-    return {version:products.some(p=>p.displayZone==='freezer')?LAYOUT_VERSION:'physical-rack-v3',mode:areas[0].mode,placementRule:areas[0].placementRule,columns:columnOffset,facingsPerSku:2,widthPx:offsetPx-28,areas,
+    return {version:combined?LAYOUT_VERSION:'physical-rack-v3',mode:areas[0].mode,placementRule:areas[0].placementRule,columns:columnOffset,facingsPerSku:2,widthPx:offsetPx-28,areas,
       tiers:[0,1,2,3].map(tier=>({tier,slots:areas.flatMap(a=>a.tiers[tier].slots)}))};
   }
   function totals(cart,products,c){

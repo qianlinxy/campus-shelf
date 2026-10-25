@@ -4,7 +4,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 root = Path(__file__).resolve().parents[1]
 dist = root / 'dist'
-target = root.parent / 'Campus_Shelf_v09_Website.zip'
+target = root.parent / 'Campus_Shelf_v010_Website.zip'
 config = (dist / 'config.js').read_text(encoding='utf-8')
 assert "enrollmentEnabled: false" in config
 assert "backendProvider: 'cloudbase'" in config

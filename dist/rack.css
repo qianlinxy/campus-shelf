@@ -81,3 +81,16 @@
 .fixture-freezer .rack-tier::after{background:linear-gradient(#e9f8ff,#99b8cc 40%,#d4e8f2);border-color:#7e9db3}
 .fixture-freezer .rack-backdrop{position:absolute;inset:65px 15px 28px;pointer-events:none;background:repeating-linear-gradient(118deg,transparent 0 170px,#ffffff28 180px 215px,transparent 225px 380px);border:2px solid #b3cfdf;border-radius:8px}
 .fixture-freezer .rack-sign{font-size:18px;letter-spacing:1px}
+
+/* A single two-door cold cabinet: upper chilled section and fixed bottom freezer. */
+.fixture-cold-cabinet .rack-sign{font-size:18px;letter-spacing:1px}
+.cabinet-compartment{position:relative;margin-inline:12px;border:2px solid #9fbcc7;border-radius:5px;background:linear-gradient(115deg,#f5ffff35,transparent 48%,#edffff30);overflow:hidden}
+.cabinet-compartment .rack-tier{padding-inline:24px 8px}
+.cabinet-compartment .tier-marker{left:1px}
+.compartment-heading{position:relative;z-index:10;height:34px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:#365969;background:linear-gradient(#edf7fa,#c3dce4);border-bottom:2px solid #91b1bf;font-size:12px;font-weight:700;direction:inherit}
+.compartment-heading span:last-child{font-size:10px;font-weight:400}
+.compartment-frozen{margin-top:5px;border-top:8px solid #657d91;background:linear-gradient(115deg,#c2deed,#e1f2fa 45%,#b1cfdf)}
+.compartment-frozen .compartment-heading{color:white;background:linear-gradient(#758ca7,#496581);border-color:#a0baca}
+.compartment-frozen .rack-tier::after{background:linear-gradient(#edf9ff,#a6bfd1 45%,#d7eaf5);border-color:#8fa9bb}
+.compartment-handle{position:absolute;right:3px;top:43px;bottom:18px;width:4px;border-radius:4px;background:linear-gradient(90deg,#819ca9,#e1f0f5,#8ca5b2);box-shadow:-1px 0 3px #607c8b50;z-index:11;pointer-events:none}
+.fixture-cold-cabinet .rack-upright{z-index:12}
