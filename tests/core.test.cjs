@@ -39,7 +39,7 @@ test('UPF and nutrient colours remain independent',()=>{
  assert.equal(C.classify(p('nuts'),'fat'),'red');
  assert.equal(C.classify(p('cola'),'fat'),'green');
  assert.equal(C.classify(p('cola'),'upf'),'red');
- assert.equal(C.classify(p('cheese'),'upf'),'amber');
+ assert.equal(C.classify({nova:3},'upf'),'amber');
  assert.equal(C.classify(p('sandwich'),'upf'),'unknown');
 });
 test('per-100 thresholds distinguish food and drink, including boundaries',()=>{

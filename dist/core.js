@@ -2,7 +2,10 @@
   'use strict';
   const RULES_VERSION='prototype-traffic-lights-v1';
   const METRICS=['kcal','fat','sugar','salt','upf'];
+  const LAYOUT_VERSION='physical-rack-v4',LAYOUTS=['alternatives-eye','targets-eye','category','popularity'];
+  const rackConfig=c=>c?.schemaVersion===2;
   function validateConfig(c){
+    if(rackConfig(c))return Number.isInteger(c.budget)&&c.budget>=100&&c.budget<=5000&&[20,25,30].includes(c.markupPercent)&&LAYOUTS.includes(c.layoutMode)&&['upf','upf-or-high'].includes(c.placementRule)&&['price','position','labels','upf'].every(k=>typeof c[k]==='boolean')&&c.position===(c.layoutMode==='alternatives-eye');
     return !!c && Number.isInteger(c.budget) && c.budget>=100 && c.budget<=5000 &&
       Number.isInteger(c.discountPercent) && c.discountPercent>=5 && c.discountPercent<=40 &&
       ['price','position','labels','upf'].every(k=>typeof c[k]==='boolean');
@@ -21,7 +24,39 @@
     if(!bounds)return 'unknown';
     return value<=bounds[0]?'green':value<=bounds[1]?'amber':'red';
   }
-  function priceMinor(p,c){return Math.round(p.price*100*(c.price&&p.eligible?1-c.discountPercent/100:1));}
+  function priceMinor(p,c){if(rackConfig(c))return Math.round(p.price*100*(c.price&&p.nova===4?1+c.markupPercent/100:1));return Math.round(p.price*100*(c.price&&p.eligible?1-c.discountPercent/100:1));}
+  function targetProduct(p,rule='upf-or-high'){return p.nova===4||(rule==='upf-or-high'&&['kcal','fat','sugar','salt'].some(m=>classify(p,m)==='red'));}
+  function fixturePlanogram(products,c,minColumns=16){
+    const mode=rackConfig(c)?c.layoutMode:(c.position?'alternatives-eye':'category');
+    const rule=rackConfig(c)?c.placementRule:'upf-or-high';
+    // Four physical tiers; at most 2 tiers per target/comparator group. Widen if required.
+    const canonical=[...products].sort((a,b)=>(a.catalogOrder??products.indexOf(a))-(b.catalogOrder??products.indexOf(b)));
+    const target=canonical.filter(p=>targetProduct(p,rule)),alternatives=canonical.filter(p=>!targetProduct(p,rule)&&p.eligible===true),neutral=canonical.filter(p=>!target.includes(p)&&!alternatives.includes(p));
+    const cols=Math.max(minColumns,Math.ceil(products.length/4),Math.ceil(Math.max(target.length,alternatives.length,neutral.length)/2));
+    const grid=Array.from({length:4},()=>Array(cols).fill(null));
+    const put=(list,tiers)=>{let i=0;for(const tier of tiers){const free=grid[tier].flatMap((p,col)=>p?[]:[col]),n=Math.min(free.length,list.length-i),start=Math.floor((free.length-n)/2);for(const col of free.slice(start,start+n))grid[tier][col]=list[i++];}if(i!==list.length)throw new Error('Planogram capacity exceeded');};
+    if(mode==='alternatives-eye'){put(alternatives,[1,0]);put(target,[3,2]);put(neutral,[0,1,2,3]);}
+    else if(mode==='targets-eye'){put(target,[1,0]);put(alternatives,[3,2]);put(neutral,[2,3,0,1]);}
+    else{
+      const categoryOrder=['drinks','snacks','fresh','meals'];
+      const categorySorted=[...canonical].sort((a,b)=>categoryOrder.indexOf(a.category)-categoryOrder.indexOf(b.category)||canonical.indexOf(a)-canonical.indexOf(b));
+      const list=mode==='popularity'?[...canonical].sort((a,b)=>(a.popularityRank??999)-(b.popularityRank??999)||canonical.indexOf(a)-canonical.indexOf(b)):categorySorted;
+      const tiers=mode==='popularity'?[1,2,0,3]:[0,1,2,3],batch=Math.ceil(list.length/4);
+      tiers.forEach((tier,i)=>put(list.slice(i*batch,(i+1)*batch),[tier]));
+    }
+    return {version:'physical-rack-v2',mode,placementRule:rule,columns:cols,facingsPerSku:2,tiers:grid.map((row,tier)=>({tier,slots:row.map((p,column)=>({id:p?.id??null,tier,column,facings:p?2:0}))}))};
+  }
+  function planogram(products,c){
+    if(!products.every(p=>['shelf','fridge','counter','freezer'].includes(p.displayZone)))return fixturePlanogram(products,c);
+    let offsetPx=0,columnOffset=0;
+    const areas=['shelf','fridge','counter','freezer'].filter(zone=>products.some(p=>p.displayZone===zone)).map(zone=>{
+      const list=products.filter(p=>p.displayZone===zone),p=fixturePlanogram(list,c,zone==='shelf'?8:4),widthPx=p.columns*116+56;
+      const area={...p,zone,offsetPx,widthPx,columnOffset,tiers:p.tiers.map(row=>({...row,slots:row.slots.map(slot=>({...slot,zone,column:slot.column+columnOffset,localColumn:slot.column}))}))};
+      offsetPx+=widthPx+28;columnOffset+=p.columns;return area;
+    });
+    return {version:products.some(p=>p.displayZone==='freezer')?LAYOUT_VERSION:'physical-rack-v3',mode:areas[0].mode,placementRule:areas[0].placementRule,columns:columnOffset,facingsPerSku:2,widthPx:offsetPx-28,areas,
+      tiers:[0,1,2,3].map(tier=>({tier,slots:areas.flatMap(a=>a.tiers[tier].slots)}))};
+  }
   function totals(cart,products,c){
     let amountMinor=0,energy=0,upfEnergy=0,unknownEnergy=0,count=0;
     for(const [id,q]of Object.entries(cart)){
@@ -43,14 +78,15 @@
     if(totals(next,products,c).remainingMinor<0)return {ok:false,reason:'budget',cart};
     return {ok:true,cart:next};
   }
-  function orderedProducts(products,c){return c.position?[...products].sort((a,b)=>Number(b.eligible)-Number(a.eligible)):[...products];}
-  function conditionCode(c){return `${+c.price}${+c.position}${+c.labels}`;}
+  function orderedProducts(products,c){if(rackConfig(c)){const byId=new Map(products.map(p=>[p.id,p]));return planogram(products,c).tiers.flatMap(t=>t.slots.filter(s=>s.id).map(s=>byId.get(s.id)));}return c.position?[...products].sort((a,b)=>Number(b.eligible)-Number(a.eligible)):[...products];}
+  function conditionCode(c){if(rackConfig(c)&&['category','popularity'].includes(c.layoutMode))return `P${+c.price}-O${c.layoutMode}-L${+c.labels}-U${+c.upf}`;const code=`${+c.price}${+c.position}${+c.labels}`;return rackConfig(c)&&c.labels!==c.upf?`${code}-U${+c.upf}`:code;}
   function snapshot(cart,products,c){
-    return {config:{...c},conditionCode:conditionCode(c),rulesVersion:RULES_VERSION,
-      basket:Object.entries(cart).filter(([id,q])=>products.some(p=>p.id===id)&&Number.isInteger(q)&&q>0&&q<=99).map(([id,quantity])=>{const p=products.find(x=>x.id===id);return {id,quantity,priceMinor:priceMinor(p,c),size:p.size,unit:p.unit,nova:p.nova,nutrientsPer100:{kcal:p.kcal,fat:p.fat,sugar:p.sugar,salt:p.salt},lights:Object.fromEntries(METRICS.map(m=>[m,classify(p,m)]))};}),
+    return {config:{...c},conditionCode:conditionCode(c),rulesVersion:RULES_VERSION,...(rackConfig(c)?{planogram:planogram(products,c),pricePolicy:'NOVA4-only-markup',popularitySource:'synthetic-not-campus-sales'}:{}),
+      basket:Object.entries(cart).filter(([id,q])=>products.some(p=>p.id===id)&&Number.isInteger(q)&&q>0&&q<=99).map(([id,quantity])=>{const p=products.find(x=>x.id===id);return {id,quantity,priceMinor:priceMinor(p,c),size:p.size,unit:p.unit,saleUnit:p.saleUnit||'pack_or_portion',portionCount:p.portionCount||1,displayZone:p.displayZone||null,nova:p.nova,nutrientsPer100:{kcal:p.kcal,fat:p.fat,sugar:p.sugar,salt:p.salt},lights:Object.fromEntries(METRICS.map(m=>[m,classify(p,m)]))};}),
       totals:totals(cart,products,c)};
   }
-  const api={RULES_VERSION,METRICS,validateConfig,classify,priceMinor,totals,changeQuantity,orderedProducts,conditionCode,snapshot};
+  function panTarget(left,viewportWidth,scrollWidth,direction){return Math.max(0,Math.min(Math.max(0,scrollWidth-viewportWidth),left+direction*Math.max(116,viewportWidth*.75)));}
+  const api={RULES_VERSION,METRICS,LAYOUT_VERSION,LAYOUTS,rackConfig,validateConfig,classify,targetProduct,planogram,panTarget,priceMinor,totals,changeQuantity,orderedProducts,conditionCode,snapshot};
   root.CampusShelfCore=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(globalThis);

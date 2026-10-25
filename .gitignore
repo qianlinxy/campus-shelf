@@ -1,3 +1,7 @@
 .publication/
+.openai/
 node_modules/
 *.log
+.env
+.env.local
+.env.*.local
