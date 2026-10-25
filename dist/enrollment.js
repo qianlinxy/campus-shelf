@@ -5,11 +5,17 @@
  let backend;
  try{backend=new CampusBackend(cfg,fetch.bind(globalThis),sessionStorage);}catch{backend=new CampusBackend(cfg,fetch.bind(globalThis),null);}
  let profile=null,step='login',channel='email',contact='',fields={},busy=false,message='',sentAt=0,qrSvg='',authEpoch=0,studyClient=null,syncStatus='';
+ let emailContact='',phoneCountryCode='+92',phoneNumber='';
  const t=k=>ui.t(k),esc=ui.escape;
  const languages=()=>`<span class="language-switch" role="group" data-language-group aria-label="${esc(t('language'))}" dir="ltr">${[['zh','中文'],['en','English'],['ur','اردو']].map(([code,label])=>`<button type="button" data-language="${code}" lang="${code==='zh'?'zh-CN':code}" dir="${code==='ur'?'rtl':'ltr'}" aria-pressed="${ui.lang()===code}">${label}</button>`).join('')}</span>`;
  const button=(id,label,klass='primary-button')=>`<button type="button" id="${id}" class="${klass}">${t(label)}</button>`;
  const inputValue=id=>$(id)?.value||'';
- function rememberFields(){if(step==='profile')fields={dob:inputValue('dobInput'),gender:inputValue('genderInput'),university:inputValue('universityInput'),heightCm:inputValue('heightInput'),weightKg:inputValue('weightInput'),waistCm:inputValue('waistInput'),questionnaireCode:inputValue('questionnaireCodeInput'),consent:$('consentInput')?.checked};if(step==='login')contact=inputValue('contactInput')||contact;}
+ function rememberFields(){if(step==='profile')fields={dob:inputValue('dobInput'),gender:inputValue('genderInput'),university:inputValue('universityInput'),heightCm:inputValue('heightInput'),weightKg:inputValue('weightInput'),waistCm:inputValue('waistInput'),questionnaireCode:inputValue('questionnaireCodeInput'),consent:$('consentInput')?.checked};if(step==='login'&&$('contactInput')){if(channel==='email')emailContact=inputValue('contactInput');else{phoneCountryCode=inputValue('countryCodeInput');phoneNumber=inputValue('contactInput');}}}
+ function contactFields(){
+  const disabled=connected?'':'disabled';
+  if(channel==='email')return `<label class="form-field" for="contactInput">${t('email')}<input id="contactInput" type="email" dir="ltr" autocomplete="email" maxlength="254" placeholder="${t('emailPlaceholder')}" value="${esc(emailContact)}" required ${disabled}></label>`;
+  return `<div class="phone-fields" dir="ltr"><label class="form-field" for="countryCodeInput">${t('countryCode')}<input id="countryCodeInput" name="countryCode" type="tel" inputmode="tel" dir="ltr" autocomplete="tel-country-code" maxlength="8" placeholder="+92" value="${esc(phoneCountryCode)}" aria-describedby="phoneHint" required ${disabled}></label><label class="form-field" for="contactInput">${t('phoneNumber')}<input id="contactInput" name="phoneNumber" type="tel" inputmode="tel" dir="ltr" autocomplete="tel-national" maxlength="32" placeholder="${t('phonePlaceholder')}" value="${esc(phoneNumber)}" aria-describedby="phoneHint" required ${disabled}></label></div><p id="phoneHint" class="field-hint">${t('phoneHint')}</p>`;
+ }
  function existingFields(p){return {dob:p.dob,gender:p.gender,university:p.university,heightCm:p.height_cm??'',weightKg:p.weight_kg??'',waistCm:p.waist_cm??'',questionnaireCode:p.questionnaire_code??''};}
  function measurementsForm(){
   const values=[['height','heightCm','cm'],['weight','weightKg','kg'],['waist','waistCm','cm']];
@@ -22,7 +28,7 @@
   const notice=!connected?`<p class="enrollment-notice">${t(step==='profile'?'profilePreview':'previewNotice')}</p>`:'';
   let html='';
   if(step==='login'){
-   html=`<p>${t('loginIntro')}</p>${notice}<form id="contactForm"><div class="auth-tabs" role="group" aria-label="${t('contact')}"><button type="button" data-channel="email" aria-pressed="${channel==='email'}">${t('email')}</button><button type="button" data-channel="phone" aria-pressed="${channel==='phone'}">${t('phone')}</button></div><label class="form-field">${t(channel)}<input id="contactInput" type="${channel==='email'?'email':'tel'}" dir="ltr" autocomplete="${channel==='email'?'email':'tel'}" maxlength="254" placeholder="${t(channel+'Placeholder')}" value="${esc(contact)}" required ${connected?'':'disabled'}></label>${channel==='phone'&&!cfg.phoneAuthEnabled?`<p class="enrollment-notice">${t('smsUnavailable')}</p>`:''}<button class="primary-button wide" type="submit" ${!connected||(channel==='phone'&&!cfg.phoneAuthEnabled)?'disabled':''}>${t('sendOtp')}</button></form><div class="auth-secondary">${button('previewProfileBtn','previewProfile','text-button')}${!connected?button('previewBrowseBtn','previewBrowse','text-button'):''}</div>`;
+   html=`<p>${t('loginIntro')}</p>${notice}<form id="contactForm"><div class="auth-tabs" role="group" aria-label="${t('contact')}"><button type="button" data-channel="email" aria-pressed="${channel==='email'}">${t('email')}</button><button type="button" data-channel="phone" aria-pressed="${channel==='phone'}">${t('phone')}</button></div>${contactFields()}${channel==='phone'&&!cfg.phoneAuthEnabled?`<p class="enrollment-notice">${t('smsUnavailable')}</p>`:''}<button class="primary-button wide" type="submit" ${!connected||(channel==='phone'&&!cfg.phoneAuthEnabled)?'disabled':''}>${t('sendOtp')}</button></form><div class="auth-secondary">${button('previewProfileBtn','previewProfile','text-button')}${!connected?button('previewBrowseBtn','previewBrowse','text-button'):''}</div>`;
   }else if(step==='otp'){
    html=`<p>${t('otpBody')}</p><form id="otpForm"><label class="form-field">${t('otp')}<input id="otpInput" type="text" inputmode="numeric" autocomplete="one-time-code" dir="ltr" maxlength="6" pattern="[0-9۰-۹٠-٩]{6}" required></label><button type="submit" class="primary-button wide">${t('verify')}</button></form><div class="auth-secondary">${button('resendBtn','resend','text-button')}${button('changeContactBtn','changeContact','text-button')}</div>`;
   }else if(step==='profile'){
@@ -47,8 +53,9 @@
  async function run(label,fn){if(busy)return;busy=true;const epoch=authEpoch;feedback(t(label));$('enrollmentContent').querySelectorAll('button,input,select').forEach(el=>el.disabled=true);try{await fn();}catch(e){if(epoch!==authEpoch)return;if(e.message==='sessionExpired'){profile=null;ui.identity(null);step='login';}message=t(e.message in CAMPUS_TEXT.en?e.message:'serviceError');render();}finally{busy=false;if(epoch===authEpoch){$('enrollmentContent').querySelectorAll('button,input,select').forEach(el=>el.disabled=false);if(step==='login'&&(!connected||(channel==='phone'&&!cfg.phoneAuthEnabled)))render();updateResend();}}}
  async function send(){
   if(!connected){feedback(t('notConfigured'));return;}
-  if(channel==='email'){contact=inputValue('contactInput').trim();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)){feedback(t('invalidContact'));return;}}
-  else try{contact=A.phone(inputValue('contactInput'));}catch(e){feedback(t(e.message));return;}
+  rememberFields();
+  if(channel==='email'){contact=emailContact.trim();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)){feedback(t('invalidContact'));return;}}
+  else try{contact=A.phone(phoneNumber,phoneCountryCode);phoneCountryCode=A.dialCode(phoneCountryCode);}catch(e){feedback(t(e.message));return;}
   await run('sending',async()=>{await backend.send(channel,contact);sentAt=Date.now();show('otp');});
  }
  function validateProfile(p){if(p&&p.catalog_version!==CAMPUS_DATA.version)throw new Error('catalogVersionMismatch');if(p&&!CampusShelfCore.validateConfig(p.pilot_config))throw new Error('serviceError');return p;}
@@ -75,7 +82,7 @@
  });
  document.addEventListener('input',e=>{if(e.target.id==='dobInput')updateAge();});
  document.addEventListener('click',e=>{
-  const channelBtn=e.target.closest('[data-channel]');if(channelBtn&&!busy){channel=channelBtn.dataset.channel;contact='';message='';render();return;}
+  const channelBtn=e.target.closest('[data-channel]');if(channelBtn&&!busy){rememberFields();channel=channelBtn.dataset.channel;message='';render();return;}
   const id=e.target.closest('button')?.id;
   if(id==='accountBtn')show(A.completeProfile(profile)?'account':backend.session&&connected?'profile':'login');
   if(id==='entryButton'){if(A.completeProfile(profile)){if(studyMode&&!studyClient)run('saving',()=>accept(profile));else $('shelf').scrollIntoView({behavior:'smooth'});}else show(backend.session&&connected?'profile':'login');}
@@ -86,12 +93,12 @@
   if(id==='previewBrowseBtn')$('enrollmentDialog').close();
   if(id==='changeContactBtn')show('login');
   if(id==='resendBtn')run('sending',async()=>{await backend.send(channel,contact);sentAt=Date.now();message='';render();});
-  if(id==='signOutBtn')run('saving',async()=>{if(studyClient&&!studyClient.blocked&&!studyClient.task.completed_at)await studyClient.flush();try{await backend.signOut();}finally{authEpoch++;studyClient?.dispose();studyClient=null;profile=null;contact='';fields={};ui.identity(null);show('login');updateBanner();}});
+  if(id==='signOutBtn')run('saving',async()=>{if(studyClient&&!studyClient.blocked&&!studyClient.task.completed_at)await studyClient.flush();try{await backend.signOut();}finally{authEpoch++;studyClient?.dispose();studyClient=null;profile=null;contact='';emailContact='';phoneCountryCode='+92';phoneNumber='';fields={};ui.identity(null);show('login');updateBanner();}});
   if(id==='retryStudySave')studyClient?.flush().catch(()=>{});
   if(id==='downloadQrBtn'&&qrSvg){const url=URL.createObjectURL(new Blob([qrSvg],{type:'image/svg+xml'}));const a=document.createElement('a');a.href=url;a.download='campus-shelf-entry-qr.svg';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
  });
  $('enrollmentDialog').addEventListener('cancel',e=>{if(busy)e.preventDefault();});
- $('enrollmentDialog').addEventListener('close',()=>{fields={};$('enrollmentContent').innerHTML='';});
+ $('enrollmentDialog').addEventListener('close',()=>{rememberFields();fields={};$('enrollmentContent').innerHTML='';});
  globalThis.CampusEnrollment={
   connected,studyMode,refresh(){rememberFields();render();updateBanner();},ready(){if(!connected)return true;if(studyClient?.blocked){ui.toast(t('studyConflict'));return false;}if(A.completeProfile(profile)&&backend.session&&(!studyMode||studyClient))return true;if(!backend.session)profile=null;updateBanner();show(backend.session?'profile':'login');if(profile)feedback(t(studyMode?'studyUnavailable':'profileIncomplete'));return false;},
   queueSave(task,language){if(studyClient?.task.id===task.id&&!studyClient.completionRequest)studyClient.queue(task,language);},commitPending(){return !!studyClient?.completionRequest;},

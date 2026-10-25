@@ -1,8 +1,32 @@
 (function(root){
  'use strict';
  function digits(s){return String(s).replace(/[۰-۹٠-٩]/g,c=>String(c.charCodeAt(0)-(c>='۰'?1776:1632)));}
- function phone(value){
+ function dialCode(value){
+  let s=digits(value).trim().replace(/\s/g,'');
+  if(s.startsWith('00'))s='+'+s.slice(2);
+  if(!/^\+?[1-9]\d{0,2}$/.test(s))throw new Error('invalidCountryCode');
+  return '+'+s.replace(/^\+/,'');
+ }
+ function phone(value,countryCode){
   let s=digits(value).trim().replace(/[\s()-]/g,'');
+  if(countryCode!==undefined){
+   const code=dialCode(countryCode);
+   if(s.startsWith('00'))s='+'+s.slice(2);
+   if(s.startsWith('+')){
+    if(!s.startsWith(code))throw new Error('invalidPhone');
+    s=s.slice(code.length);
+   }
+   if(code==='+92'){
+    if(/^923\d{9}$/.test(s))s=s.slice(2);
+    if(/^03\d{9}$/.test(s))s=s.slice(1);
+    if(!/^3\d{9}$/.test(s))throw new Error('invalidPhone');
+   }
+   // Other countries use the national number in international format.
+   // Do not strip leading zeroes globally: some countries retain them.
+   const full=code+s;
+   if(!/^\d{4,14}$/.test(s)||!/^\+[1-9]\d{6,14}$/.test(full))throw new Error('invalidPhone');
+   return full;
+  }
   if(s.startsWith('0092'))s='+'+s.slice(2);
   if(/^03\d{9}$/.test(s))s='+92'+s.slice(1);
   if(/^923\d{9}$/.test(s))s='+'+s;
@@ -63,6 +87,6 @@
  function httpsUrl(value){try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash?u.href:null;}catch{return null;}}
  function enabled(c){return configReady(c)&&c.enrollmentEnabled===true&&typeof c.consentVersion==='string'&&c.consentVersion.length>0&&['zh','en','ur'].every(l=>httpsUrl(c.informationUrls?.[l]));}
  function qrUrl(c,current){return httpsUrl(c.publicSiteUrl)||httpsUrl(current);}
- const api={digits,phone,age,pakistanToday,profile,genders,measurementRules,measurement,questionnaireCode,completeProfile,publicKey,cloudbaseKey,provider,cloudbaseUrl,configReady,enabled,httpsUrl,qrUrl};
+ const api={digits,dialCode,phone,age,pakistanToday,profile,genders,measurementRules,measurement,questionnaireCode,completeProfile,publicKey,cloudbaseKey,provider,cloudbaseUrl,configReady,enabled,httpsUrl,qrUrl};
  root.CampusAuthCore=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(globalThis);
