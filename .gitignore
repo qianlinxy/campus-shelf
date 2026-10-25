@@ -1,5 +1,6 @@
 .publication/
 .openai/
+.workbuddy/
 node_modules/
 *.log
 .env

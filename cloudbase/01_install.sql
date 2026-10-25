@@ -47,7 +47,7 @@ create table private.catalog (
 );
 
 create table public.participant_profiles (
- user_id varchar(64) primary key references auth.users(id) on delete cascade,
+ user_id varchar(64) primary key,
  participant_id uuid not null unique default gen_random_uuid(),
  dob date not null,
  gender text not null check(gender in ('female','male','other','prefer_not_to_say')),
@@ -86,7 +86,7 @@ returns jsonb language plpgsql security definer set search_path='' as $$
 declare
  v_user text:=auth.uid(); v_settings private.pilot_settings; v_today date:=(now() at time zone 'Asia/Karachi')::date; v_age int;
 begin
- if v_user is null or not exists(select 1 from auth.users u where u.id=v_user and private.cloudbase_verified_contact(to_jsonb(u))) then raise exception 'verified_contact_required'; end if;
+ if v_user is null or not exists(select 1 from auth.users u where u.sub=v_user and private.cloudbase_verified_contact(to_jsonb(u))) then raise exception 'verified_contact_required'; end if;
  if exists(select 1 from public.participant_profiles where user_id=v_user) then return public.get_my_profile(); end if;
  select * into strict v_settings from private.pilot_settings where id=true;
  if not v_settings.enrollment_open or v_settings.consent_version='' or p_consent_version is distinct from v_settings.consent_version then raise exception 'enrollment_closed'; end if;
@@ -220,7 +220,7 @@ declare
  v_age int; v_existing public.participant_profiles; v_code text:=nullif(btrim(p_questionnaire_code),'');
 begin
  -- Lock by verified auth identity to serialize repeat registrations by one user.
- perform 1 from auth.users u where u.id=v_user and private.cloudbase_verified_contact(to_jsonb(u)) for update;
+ perform 1 from auth.users u where u.sub=v_user and private.cloudbase_verified_contact(to_jsonb(u)) for update;
  if v_user is null or not found then raise exception 'verified_contact_required'; end if;
  select * into v_existing from public.participant_profiles where user_id=v_user for update;
  if found and v_existing.height_cm is not null and v_existing.weight_kg is not null and v_existing.waist_cm is not null then return public.get_my_profile(); end if;
@@ -491,7 +491,7 @@ select 'almab-factorial-test-v1','candidate-protocol-v1', 'synthetic-pakistan-ca
 from private.catalog where version='synthetic-pakistan-catalog-v3';
 
 create table private.study_admins (
- user_id varchar(64) primary key references auth.users(id), can_export boolean not null default false,
+ user_id varchar(64) primary key, can_export boolean not null default false,
  created_at timestamptz not null default now()
 );
 -- The randomization sequence is inaccessible to students and to the monitoring RPC.
@@ -523,7 +523,7 @@ create table private.study_events (
 );
 create index study_events_task_idx on private.study_events(task_id);
 create table private.export_sessions (
- id uuid primary key default gen_random_uuid(), user_id varchar(64) not null references auth.users(id),
+ id uuid primary key default gen_random_uuid(), user_id varchar(64) not null,
  study_id text not null references private.studies(id), dataset text not null,
  filters jsonb not null, cutoff timestamptz not null default now()
 );

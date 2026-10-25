@@ -35,6 +35,11 @@ function build(){
  let sql=files.map(name=>'\n-- Source: '+name+'\n'+fs.readFileSync(path.join(root,'supabase/migrations',name),'utf8').replace(/^begin;\s*$/gm,'').replace(/^commit;\s*$/gm,'')).join('\n');
  sql=replaceExactly(sql,'user_id uuid','user_id varchar(64)',3);
  sql=replaceExactly(sql,'v_user uuid:=auth.uid()','v_user text:=auth.uid()',2);
+ // CloudBase auth.users.id is bigint (PK); the text identity is auth.users.sub (unique per (project,sub)).
+ // Drop the uuid FK references and compare against sub instead of id.
+ sql=replaceExactly(sql,' references auth.users(id) on delete cascade','',1);
+ sql=replaceExactly(sql,' references auth.users(id)','',2);
+ sql=replaceExactly(sql,'u.id=v_user','u.sub=v_user',2);
  sql=replaceExactly(sql,'(u.email_confirmed_at is not null or u.phone_confirmed_at is not null)','private.cloudbase_verified_contact(to_jsonb(u))',2);
  sql=replaceExactly(sql,'revoke all on schema private from public, anon, authenticated;','revoke all on schema private from public, anon, authenticated;\n'+helper,1);
  sql=sql.replace('-- Run once in a new Supabase project.','-- Business schema adapted for a new CloudBase PG project.');
