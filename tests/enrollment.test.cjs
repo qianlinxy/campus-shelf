@@ -9,6 +9,18 @@ test('Pakistani mobile normalization accepts local, international and Urdu numer
  for(const value of ['0300 1234567','+92 300-1234567','00923001234567','923001234567','۰۳۰۰۱۲۳۴۵۶۷','٠٣٠٠١٢٣٤٥٦٧'])assert.equal(A.phone(value),'+923001234567');
  for(const value of ['+12025550123','+9230012345678','0211234567','0300123456','0300abc4567'])assert.throws(()=>A.phone(value),/invalidPhone/);
 });
+
+test('separate dialling code and national number normalize before SMS verification',()=>{
+ for(const code of ['+92','92','0092','+۹۲','+٩٢'])for(const n of ['3001234567','0300 1234567','+92 300-1234567','00923001234567','923001234567','۰۳۰۰۱۲۳۴۵۶۷'])assert.equal(A.phone(n,code),'+923001234567');
+ assert.equal(A.phone('13800138000','+86'),'+8613800138000');
+ assert.equal(A.phone('2025550123','+1'),'+12025550123');
+ assert.equal(A.phone('7700900123','+44'),'+447700900123');
+ assert.equal(A.phone('0612345678','+39'),'+390612345678'); // Significant zero is retained.
+ for(const code of ['','+0','+0092','+1234','92abc'])assert.throws(()=>A.phone('3001234567',code),/invalidCountryCode/);
+ for(const n of ['','300abc4567','+8613800138000','0300123456','0211234567'])assert.throws(()=>A.phone(n,'+92'),/invalidPhone/);
+ assert.throws(()=>A.phone('123456789012345','+86'),/invalidPhone/);
+ assert.throws(()=>A.phone('123','+86'),/invalidPhone/);
+});
 test('age uses a valid full birth date and birthday boundary in Pakistan',()=>{
  assert.equal(A.age('2008-10-24','2026-10-23'),17);assert.equal(A.age('2008-10-24','2026-10-24'),18);
  assert.equal(A.age('2000-10-25','2026-10-24'),25);assert.equal(A.age('2000-10-24','2026-10-24'),26);

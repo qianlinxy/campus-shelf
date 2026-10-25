@@ -11,13 +11,13 @@ for(const provider of ['supabase','cloudbase'])test(provider+' factorial study: 
  try{
   if(provider==='cloudbase'){
    await db.exec(`create role anon;create role authenticated;create schema auth;
-    create table auth.users(id varchar(64) primary key,email text,email_verified boolean default false,is_anonymous boolean default false,user_metadata jsonb default '{}');
+    create table auth.users(id bigint generated always as identity primary key,sub varchar(64) unique not null,email text,email_verified boolean default false,is_anonymous boolean default false,user_metadata jsonb default '{}');
     create function auth.jwt() returns jsonb language sql stable as $$select nullif(current_setting('request.jwt.claims',true),'')::jsonb$$;
     create function auth.uid() returns text language sql stable as $$select auth.jwt()->>'sub'$$;
     grant usage on schema auth to authenticated,anon;grant execute on function auth.uid(),auth.jwt() to authenticated,anon;`);
    const sql=fs.readFileSync(path.join(__dirname,'../cloudbase/01_install.sql'),'utf8');assert.equal(sql,require('../tools/build-cloudbase.cjs').build());await db.exec(sql);
-   await t.test('unverified and anonymous contacts fail closed; user metadata cannot claim verification',async()=>{
-    await db.exec(`insert into auth.users(id,email,user_metadata) values('unverified-user','synthetic@example.org','{"email_verified":true}');`);
+   await t.test('missing and anonymous contacts fail closed; user metadata cannot supply the server contact',async()=>{
+    await db.exec(`insert into auth.users(sub,user_metadata) values('unverified-user','{"email":"synthetic@example.org","email_verified":true}');`);
     await login('unverified-user');await assert.rejects(db.query("select public.register_participant((current_date-interval '22 years')::date,'female','Synthetic University','test',170,60,80,null)"),/verified_contact_required/);
     await owner();assert.equal((await db.query(`select private.cloudbase_verified_contact('{"email":"synthetic@example.org","email_verified":true,"is_anonymous":true}') as v`)).rows[0].v,false);
     await assert.rejects(db.exec(sql),/fresh_environment_required/);await db.exec('rollback');
@@ -32,7 +32,7 @@ for(const provider of ['supabase','cloudbase'])test(provider+' factorial study: 
   await db.exec("update private.pilot_settings set enrollment_open=true,consent_version='study-test-v1'");
   const people=[];
   for(let i=0;i<16;i++){
-   const id=provider==='cloudbase'?'tcb-non-uuid-user-'+i:uuid();await owner();await db.query(provider==='cloudbase'?"insert into auth.users(id,email,email_verified) values($1,'synthetic@example.org',true)":'insert into auth.users(id,email_confirmed_at) values($1,now())',[id]);await login(id);
+   const id=provider==='cloudbase'?'tcb-non-uuid-user-'+i:uuid();await owner();await db.query(provider==='cloudbase'?"insert into auth.users(sub,email,email_verified) values($1,'synthetic@example.org',true)":'insert into auth.users(id,email_confirmed_at) values($1,now())',[id]);await login(id);
    const p=(await db.query("select public.register_participant((current_date-interval '22 years')::date,'female','Synthetic University','study-test-v1',170,60,80,null) as p")).rows[0].p;
    if(i===0){await t.test('new study closed by default',()=>assert.rejects(start(),/study_closed/));await owner();await db.exec("update private.studies set enrollment_open=true,tasks_open=true,consent_version='study-test-v1'");await login(id);}
    const task=await start();people.push({id,p,task});assert.equal((await start()).id,task.id);
