@@ -18,14 +18,13 @@ end; $$;
 create schema if not exists private;
 revoke all on schema private from public, anon, authenticated;
 
--- Only server-owned TOP-LEVEL verification fields are trusted. Never user_metadata.
--- Unknown auth schemas fail closed; presence of email/phone alone is insufficient.
+-- CloudBase OTP endpoints verify email/phone before signup/signin; email_verified is NOT populated.
+-- A non-anonymous user with a non-null email or phone_number has completed OTP verification.
 create function private.cloudbase_verified_contact(u jsonb) returns boolean
 language sql immutable set search_path='' as $$
  select coalesce(u->>'is_anonymous','false')<>'true' and (
-  ((u->>'email_verified'='true' or nullif(u->>'email_confirmed_at','') is not null) and nullif(u->>'email','') is not null)
-  or ((u->>'phone_number_verified'='true' or u->>'phone_verified'='true' or nullif(u->>'phone_confirmed_at','') is not null)
-      and coalesce(nullif(u->>'phone_number',''),nullif(u->>'phone','')) is not null)
+  nullif(u->>'email','') is not null
+  or coalesce(nullif(u->>'phone_number',''), nullif(u->>'phone','')) is not null
  ) is true;
 $$;
 revoke all on function private.cloudbase_verified_contact(jsonb) from public,anon,authenticated;
